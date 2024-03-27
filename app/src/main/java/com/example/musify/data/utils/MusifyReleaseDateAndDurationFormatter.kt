@@ -4,6 +4,8 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
+import java.time.format.DateTimeParseException
+
 
 /**
  * A class that contains the duration and date of an episode
@@ -28,6 +30,8 @@ data class FormattedEpisodeDateAndDuration(
     val minutes: Int
 )
 
+
+
 /**
  * A utility method used to generate an instance of [FormattedEpisodeDateAndDuration]
  * based on the [releaseDateString] & [durationMillis] parameters.
@@ -37,21 +41,30 @@ fun getFormattedEpisodeReleaseDateAndDuration(
     releaseDateString: String,
     durationMillis: Long
 ): FormattedEpisodeDateAndDuration {
-    val localDate = LocalDate.parse(releaseDateString)
-    val duration = Duration.ofMillis(durationMillis)
-
-    // Equivalent to duration#toHoursPart. Not available in java 8 desugared library
-    val hours = (duration.toHours() % 24).toInt()
-
-    // Equivalent to duration#toMinutesPart. Not available in java 8 desugared library
-    val minutes = (duration.toMinutes() % 60).toInt().coerceAtLeast(1)
-
-    return FormattedEpisodeDateAndDuration(
-        day = localDate.dayOfMonth,
-        month = localDate.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-        year = localDate.year,
-        hours = hours,
-        minutes = minutes
-    )
+    return try {
+        val localDate = LocalDate.parse(releaseDateString)
+        val duration = Duration.ofMillis(durationMillis)
+        val hours = duration.toHours()
+        val minutes = duration.minusHours(hours).toMinutes()
+        FormattedEpisodeDateAndDuration(
+            month = localDate.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+            day = localDate.dayOfMonth,
+            year = localDate.year,
+            hours = hours.toInt(),
+            minutes = minutes.toInt().coerceAtLeast(1)
+        )
+    } catch (e: DateTimeParseException) {
+        // Handle the exception gracefully
+        val duration = Duration.ofMillis(durationMillis)
+        val hours = duration.toHours()
+        val minutes = duration.minusHours(hours).toMinutes()
+        FormattedEpisodeDateAndDuration(
+            month = "",
+            day = 0,
+            year = 0,
+            hours = hours.toInt(),
+            minutes = minutes.toInt().coerceAtLeast(1)
+        )
+    }
 }
 
